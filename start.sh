@@ -5,10 +5,10 @@
 # This script sets up the entire project from scratch:
 #   1. Stops any running containers and removes old volumes
 #   2. Builds all Docker images
-#   3. Generates Django migrations
-#   4. Starts all services (DB, backend, frontend)
-#   5. Runs migrations and seeds data via the entrypoint
-#   6. Runs the full test suite
+#   3. Starts all services (DB, backend, frontend)
+#   4. Waits for migrations to run and data to seed (via entrypoint)
+#   5. Verifies all containers are healthy
+#   6. Runs the full test suite (85 tests)
 #
 # Usage:
 #   chmod +x start.sh
@@ -66,86 +66,57 @@ fail() {
 step "Preflight checks"
 
 if ! command -v docker &> /dev/null; then
-    fail "Docker is not installed. Please install Docker first."
+    fail "Docker is not installed. Please install Docker first: https://docs.docker.com/get-docker/"
 fi
 
 if ! docker info &> /dev/null; then
-    fail "Docker daemon is not running. Please start Docker."
+    fail "Docker daemon is not running. Please start Docker Desktop or the Docker service."
 fi
 
 if ! docker compose version &> /dev/null 2>&1 && ! docker-compose version &> /dev/null 2>&1; then
-    fail "Docker Compose is not installed."
+    fail "Docker Compose is not installed. It is included with Docker Desktop."
 fi
 
-# Use 'docker compose' if available, otherwise fall back to 'docker-compose'
+# Use 'docker compose' (v2) if available, otherwise fall back to 'docker-compose' (v1)
 if docker compose version &> /dev/null 2>&1; then
     DC="docker compose"
 else
     DC="docker-compose"
 fi
 
-success "Docker and Docker Compose are available"
+success "Docker and Docker Compose are available ($($DC version --short 2>/dev/null || echo 'OK'))"
 
 # ── Step 1: Clean up ─────────────────────────────────────────────────────────
 
-step "Step 1/7 — Cleaning up existing containers and volumes"
+step "Step 1/6 — Cleaning up existing containers and volumes"
 
 $DC down -v 2>/dev/null || true
 success "Old containers and volumes removed"
 
 # ── Step 2: Build images ─────────────────────────────────────────────────────
 
-step "Step 2/7 — Building Docker images"
+step "Step 2/6 — Building Docker images (this may take a few minutes)"
 
 $DC build --no-cache
 success "All images built successfully"
 
-# ── Step 3: Start database ───────────────────────────────────────────────────
+# ── Step 3: Start all services ───────────────────────────────────────────────
 
-step "Step 3/7 — Starting PostgreSQL and waiting for it to be healthy"
-
-$DC up -d db
-
-echo -n "  Waiting for PostgreSQL..."
-RETRIES=30
-until $DC exec db pg_isready -U bloguser -d blogdb &> /dev/null; do
-    RETRIES=$((RETRIES - 1))
-    if [ $RETRIES -le 0 ]; then
-        echo ""
-        fail "PostgreSQL did not become healthy in time"
-    fi
-    echo -n "."
-    sleep 2
-done
-echo ""
-success "PostgreSQL is ready"
-
-# ── Step 4: Generate migrations ──────────────────────────────────────────────
-
-step "Step 4/7 — Generating Django migrations"
-
-$DC run --rm --no-deps --entrypoint python backend manage.py makemigrations accounts 2>&1 | \
-    sed 's/^/  /'
-$DC run --rm --no-deps --entrypoint python backend manage.py makemigrations posts 2>&1 | \
-    sed 's/^/  /'
-success "Migrations generated for accounts and posts apps"
-
-# ── Step 5: Start all services ───────────────────────────────────────────────
-
-step "Step 5/7 — Starting all services"
+step "Step 3/6 — Starting all services"
 
 $DC up -d
 success "All containers started"
 
-# Wait for backend to be ready (entrypoint runs migrate + seed)
-echo -n "  Waiting for backend to be ready..."
+# Wait for backend to be ready (entrypoint waits for DB, runs migrate + seed)
+echo -n "  Waiting for backend (migrations + seeding)..."
 RETRIES=60
 until curl -sf http://localhost:8000/api/v1/docs/ > /dev/null 2>&1; do
     RETRIES=$((RETRIES - 1))
     if [ $RETRIES -le 0 ]; then
         echo ""
-        warn "Backend did not respond in time. Check logs with: $DC logs backend"
-        break
+        warn "Backend did not respond in time. Checking logs..."
+        $DC logs --tail=20 backend
+        fail "Backend failed to start. See logs above."
     fi
     echo -n "."
     sleep 2
@@ -160,8 +131,9 @@ until curl -sf http://localhost:3000 > /dev/null 2>&1; do
     RETRIES=$((RETRIES - 1))
     if [ $RETRIES -le 0 ]; then
         echo ""
-        warn "Frontend did not respond in time. Check logs with: $DC logs frontend"
-        break
+        warn "Frontend did not respond in time. Checking logs..."
+        $DC logs --tail=20 frontend
+        fail "Frontend failed to compile. See logs above."
     fi
     echo -n "."
     sleep 2
@@ -169,9 +141,9 @@ done
 echo ""
 success "Frontend is compiled and serving"
 
-# ── Step 6: Verify containers ────────────────────────────────────────────────
+# ── Step 4: Verify containers ────────────────────────────────────────────────
 
-step "Step 6/7 — Verifying container health"
+step "Step 4/6 — Verifying container health"
 
 echo ""
 $DC ps
@@ -186,13 +158,13 @@ for svc in db backend frontend; do
     fi
 done
 
-# ── Step 7: Run tests ────────────────────────────────────────────────────────
+# ── Step 5: Run tests ────────────────────────────────────────────────────────
 
 if [ "$SKIP_TESTS" = true ]; then
-    step "Step 7/7 — Tests (SKIPPED)"
+    step "Step 5/6 — Tests (SKIPPED)"
     warn "Tests skipped via --skip-tests flag"
 else
-    step "Step 7/7 — Running test suite"
+    step "Step 5/6 — Running test suite (85 tests)"
     echo ""
     if $DC exec backend pytest --tb=short; then
         success "All tests passed"
@@ -201,25 +173,27 @@ else
     fi
 fi
 
-# ── Done ─────────────────────────────────────────────────────────────────────
+# ── Step 6: Done ─────────────────────────────────────────────────────────────
+
+step "Step 6/6 — Setup complete!"
 
 echo ""
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BOLD}${GREEN}  Setup complete!${NC}"
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${BOLD}Access the application:${NC}"
 echo ""
-echo -e "  ${BOLD}Frontend${NC}       http://localhost:3000"
-echo -e "  ${BOLD}API${NC}            http://localhost:8000/api/v1/posts/"
-echo -e "  ${BOLD}Swagger Docs${NC}   http://localhost:8000/api/v1/docs/"
-echo -e "  ${BOLD}Django Admin${NC}   http://localhost:8000/admin/"
+echo -e "    Frontend        ${CYAN}http://localhost:3000${NC}"
+echo -e "    API             ${CYAN}http://localhost:8000/api/v1/posts/${NC}"
+echo -e "    Swagger Docs    ${CYAN}http://localhost:8000/api/v1/docs/${NC}"
+echo -e "    Django Admin    ${CYAN}http://localhost:8000/admin/${NC}"
 echo ""
 echo -e "  ${BOLD}Seeded accounts:${NC}"
-echo -e "    Admin   →  admin@blog.local  / admin123!@#"
-echo -e "    Author  →  author@blog.local / author123!@#"
+echo ""
+echo -e "    Admin    admin@blog.local  / admin123!@#"
+echo -e "    Author   author@blog.local / author123!@#"
 echo ""
 echo -e "  ${BOLD}Useful commands:${NC}"
-echo -e "    $DC logs -f backend      # View backend logs"
-echo -e "    $DC logs -f frontend     # View frontend logs"
-echo -e "    $DC exec backend pytest  # Run tests"
-echo -e "    $DC down                 # Stop everything"
+echo ""
+echo -e "    $DC logs -f backend      ${YELLOW}# View backend logs${NC}"
+echo -e "    $DC logs -f frontend     ${YELLOW}# View frontend logs${NC}"
+echo -e "    $DC exec backend pytest  ${YELLOW}# Run tests${NC}"
+echo -e "    $DC down                 ${YELLOW}# Stop everything${NC}"
 echo ""

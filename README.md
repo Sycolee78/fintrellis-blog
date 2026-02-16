@@ -39,13 +39,10 @@ chmod +x start.sh
 The script will:
 1. Stop and remove any existing containers and volumes (clean slate)
 2. Build all Docker images from scratch
-3. Start the PostgreSQL database and wait for it to be healthy
-4. Generate Django migrations for the `accounts` and `posts` apps
-5. Start all services (backend, frontend, database)
-6. Run database migrations automatically via the entrypoint
-7. Seed an admin user and sample author with 7 example posts
-8. Run the full test suite (85 tests)
-9. Print access URLs and seeded account credentials
+3. Start all services (database, backend, frontend)
+4. Run database migrations and seed an admin user + sample author with 7 posts
+5. Run the full test suite (85 tests)
+6. Print access URLs and seeded account credentials
 
 Once complete, open:
 
