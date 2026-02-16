@@ -4,7 +4,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsAuthorRole, IsOwnerOrAdmin
+from apps.accounts.permissions import IsOwner
 
 from .filters import PostFilter
 from .models import Post
@@ -19,11 +19,6 @@ class PostListCreateView(APIView):
     """
 
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-
-    def get_permissions(self):
-        if self.request.method == "POST":
-            return [IsAuthorRole()]
-        return [permissions.IsAuthenticated()]
 
     def get(self, request):
         queryset = PostService.list_posts()
@@ -66,6 +61,7 @@ class PostListCreateView(APIView):
             category=serializer.validated_data.get("category", ""),
             status=serializer.validated_data.get("status", "draft"),
             thumbnail=serializer.validated_data.get("thumbnail"),
+            image_url=serializer.validated_data.get("image_url", ""),
         )
 
         output = PostDetailSerializer(post, context={"request": request})
@@ -84,7 +80,7 @@ class PostDetailView(APIView):
 
     def get_permissions(self):
         if self.request.method in ("PUT", "PATCH", "DELETE"):
-            return [IsOwnerOrAdmin()]
+            return [IsOwner()]
         return [permissions.IsAuthenticated()]
 
     def _get_post(self, pk):

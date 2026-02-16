@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    platform: linux/amd64
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -19,6 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+    platform: linux/amd64
     entrypoint: ["bash", "/app/docker-entrypoint.sh"]
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     volumes:
@@ -44,6 +46,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    platform: linux/amd64
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public

@@ -30,6 +30,9 @@ class Post(TimeStampedModel):
     thumbnail = models.ImageField(
         upload_to=post_thumbnail_path, blank=True, null=True
     )
+    image_url = models.URLField(
+        max_length=500, blank=True, default="/fintrellis.gif"
+    )
     status = models.CharField(
         max_length=10,
         choices=Status.choices,

@@ -8,7 +8,7 @@ export default function Header() {
   const { user, logoutUser } = useAuth();
 
   const isActive = (path) => location.pathname === path;
-  const canCreate = user && (user.role === "author" || user.role === "admin");
+  const canCreate = !!user;
 
   const handleLogout = async () => {
     await logoutUser();

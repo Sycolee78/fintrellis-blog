@@ -32,7 +32,7 @@ class PostService:
         return Post.objects.get(pk=post_id)
 
     @staticmethod
-    def create_post(*, title, content, author, excerpt="", category="", status="draft", thumbnail=None):
+    def create_post(*, title, content, author, excerpt="", category="", status="draft", thumbnail=None, image_url=""):
         """Create a new post with auto-generated slug and excerpt."""
         slug = PostService._generate_unique_slug(title)
         if not excerpt:
@@ -51,6 +51,7 @@ class PostService:
             status=status,
             published_at=published_at,
             author=author,
+            image_url=image_url or "/fintrellis.gif",
         )
         # Assign thumbnail before first save so upload_to can use post.id
         if thumbnail:

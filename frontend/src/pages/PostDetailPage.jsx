@@ -21,9 +21,7 @@ export default function PostDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const canEdit =
-    user &&
-    post &&
-    (user.role === "admin" || (user.role === "author" && post.author === user.id));
+    user && post && String(post.author) === String(user.id);
 
   const handleDelete = async () => {
     try {
@@ -42,13 +40,16 @@ export default function PostDetailPage() {
 
   return (
     <div>
-      {/* Hero thumbnail */}
-      {post.thumbnail_url && (
-        <div style={styles.heroImage}>
-          <img src={post.thumbnail_url} alt={post.title} style={styles.heroImg} />
-          <div style={styles.heroOverlay} />
-        </div>
-      )}
+      {/* Hero image */}
+      <div style={styles.heroImage}>
+        <img
+          src={post.thumbnail_url || post.image_url || "/fintrellis.gif"}
+          alt={post.title}
+          style={styles.heroImg}
+          onError={(e) => { e.target.src = "/fintrellis.gif"; }}
+        />
+        <div style={styles.heroOverlay} />
+      </div>
 
       <div style={styles.wrap}>
         <Link to="/" style={styles.back}>&larr; All posts</Link>

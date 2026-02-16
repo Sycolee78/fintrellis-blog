@@ -49,6 +49,12 @@ class TestPostListAPI:
         response = auth_client.get(reverse("post-list"))
         assert response.data["results"][0]["category"] == "Tech"
 
+    def test_list_response_includes_image_url(self, auth_client):
+        PostFactory()
+        response = auth_client.get(reverse("post-list"))
+        assert "image_url" in response.data["results"][0]
+        assert response.data["results"][0]["image_url"] == "/fintrellis.gif"
+
     def test_list_posts_empty_returns_200(self, auth_client):
         response = auth_client.get(reverse("post-list"))
         assert response.status_code == status.HTTP_200_OK
@@ -124,6 +130,7 @@ class TestPostDetailAPI:
         assert "category" in response.data
         assert "author" in response.data
         assert "author_email" in response.data
+        assert "image_url" in response.data
 
     def test_get_nonexistent_post_returns_404(self, auth_client):
         fake_id = uuid.uuid4()

@@ -23,7 +23,7 @@ function App() {
               <Route
                 path="/posts/new"
                 element={
-                  <ProtectedRoute requiredRoles={["author", "admin"]}>
+                  <ProtectedRoute>
                     <PostCreatePage />
                   </ProtectedRoute>
                 }
@@ -32,7 +32,7 @@ function App() {
               <Route
                 path="/posts/:id/edit"
                 element={
-                  <ProtectedRoute requiredRoles={["author", "admin"]}>
+                  <ProtectedRoute>
                     <PostEditPage />
                   </ProtectedRoute>
                 }

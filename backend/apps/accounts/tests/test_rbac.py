@@ -38,7 +38,7 @@ class TestUnauthenticatedAccess:
 
 @pytest.mark.django_db
 class TestReaderPermissions:
-    """Readers can list/detail but cannot create, update, or delete."""
+    """All authenticated users (including readers) can create and manage their own posts."""
 
     def test_reader_can_list(self, reader_client, author_user):
         PostFactory(author=author_user)
@@ -50,15 +50,29 @@ class TestReaderPermissions:
         response = reader_client.get(reverse("post-detail", args=[post.id]))
         assert response.status_code == status.HTTP_200_OK
 
-    def test_reader_cannot_create(self, reader_client):
+    def test_reader_can_create(self, reader_client):
         response = reader_client.post(
             reverse("post-list"),
-            {"title": "Test", "content": "Content that is long enough."},
+            {"title": "Reader Post", "content": "Content that is long enough."},
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_201_CREATED
 
-    def test_reader_cannot_update(self, reader_client, author_user):
+    def test_reader_can_edit_own(self, reader_client, reader_user):
+        post = PostFactory(author=reader_user)
+        response = reader_client.patch(
+            reverse("post-detail", args=[post.id]),
+            {"title": "Updated"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_reader_can_delete_own(self, reader_client, reader_user):
+        post = PostFactory(author=reader_user)
+        response = reader_client.delete(reverse("post-detail", args=[post.id]))
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_reader_cannot_edit_others(self, reader_client, author_user):
         post = PostFactory(author=author_user)
         response = reader_client.patch(
             reverse("post-detail", args=[post.id]),
@@ -67,7 +81,7 @@ class TestReaderPermissions:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_reader_cannot_delete(self, reader_client, author_user):
+    def test_reader_cannot_delete_others(self, reader_client, author_user):
         post = PostFactory(author=author_user)
         response = reader_client.delete(reverse("post-detail", args=[post.id]))
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -117,8 +131,8 @@ class TestAuthorPermissions:
 
 
 @pytest.mark.django_db
-class TestAdminPermissions:
-    """Admins can create, edit any, and delete any post."""
+class TestOwnershipEnforcement:
+    """Only the post owner can edit/delete — even admins cannot modify others' posts."""
 
     def test_admin_can_create(self, admin_client):
         response = admin_client.post(
@@ -128,7 +142,7 @@ class TestAdminPermissions:
         )
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_admin_can_edit_any(self, admin_client):
+    def test_admin_cannot_edit_others(self, admin_client):
         author = UserFactory(author=True)
         post = PostFactory(author=author)
         response = admin_client.patch(
@@ -136,11 +150,24 @@ class TestAdminPermissions:
             {"title": "Admin Edit"},
             format="json",
         )
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["title"] == "Admin Edit"
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_admin_can_delete_any(self, admin_client):
+    def test_admin_cannot_delete_others(self, admin_client):
         author = UserFactory(author=True)
         post = PostFactory(author=author)
+        response = admin_client.delete(reverse("post-detail", args=[post.id]))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_edit_own(self, admin_client, admin_user):
+        post = PostFactory(author=admin_user)
+        response = admin_client.patch(
+            reverse("post-detail", args=[post.id]),
+            {"title": "Admin Own Edit"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_admin_can_delete_own(self, admin_client, admin_user):
+        post = PostFactory(author=admin_user)
         response = admin_client.delete(reverse("post-detail", args=[post.id]))
         assert response.status_code == status.HTTP_204_NO_CONTENT
