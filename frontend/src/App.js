@@ -17,7 +17,14 @@ function App() {
         <ToastProvider>
           <Layout>
             <Routes>
-              <Route path="/" element={<PostListPage />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <PostListPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route
@@ -28,7 +35,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/posts/:id" element={<PostDetailPage />} />
+              <Route
+                path="/posts/:id"
+                element={
+                  <ProtectedRoute>
+                    <PostDetailPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/posts/:id/edit"
                 element={
