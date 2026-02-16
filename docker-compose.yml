@@ -36,6 +36,8 @@ services:
       - DB_PASSWORD=blogpass
       - DB_HOST=db
       - DB_PORT=5432
+      - CORS_ALLOW_CREDENTIALS=true
+      - CSRF_TRUSTED_ORIGINS=http://localhost:3000
     depends_on:
       db:
         condition: service_healthy

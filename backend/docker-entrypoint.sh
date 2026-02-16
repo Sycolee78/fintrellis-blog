@@ -24,5 +24,11 @@ echo "PostgreSQL is ready."
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+echo "Seeding admin user..."
+python manage.py seed_admin || true
+
+echo "Seeding sample data..."
+python manage.py seed_sample_data || true
+
 echo "Starting server..."
 exec "$@"

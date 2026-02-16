@@ -1,24 +1,46 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import { ToastProvider } from "./hooks/useToast";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import PostListPage from "./pages/PostListPage";
 import PostDetailPage from "./pages/PostDetailPage";
 import PostCreatePage from "./pages/PostCreatePage";
 import PostEditPage from "./pages/PostEditPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<PostListPage />} />
-            <Route path="/posts/new" element={<PostCreatePage />} />
-            <Route path="/posts/:id" element={<PostDetailPage />} />
-            <Route path="/posts/:id/edit" element={<PostEditPage />} />
-          </Routes>
-        </Layout>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<PostListPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route
+                path="/posts/new"
+                element={
+                  <ProtectedRoute requiredRoles={["author", "admin"]}>
+                    <PostCreatePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/posts/:id" element={<PostDetailPage />} />
+              <Route
+                path="/posts/:id/edit"
+                element={
+                  <ProtectedRoute requiredRoles={["author", "admin"]}>
+                    <PostEditPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Layout>
+        </ToastProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

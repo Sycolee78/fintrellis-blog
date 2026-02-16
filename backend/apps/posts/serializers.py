@@ -8,11 +8,14 @@ class PostListSerializer(serializers.ModelSerializer):
     """Minimal representation for list endpoints (excludes full content)."""
 
     thumbnail_url = serializers.SerializerMethodField()
+    author_email = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             "id",
+            "author",
+            "author_email",
             "title",
             "slug",
             "excerpt",
@@ -24,6 +27,9 @@ class PostListSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_author_email(self, obj):
+        return obj.author.email if obj.author else None
 
     def get_thumbnail_url(self, obj):
         if obj.thumbnail:
@@ -39,11 +45,14 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
     thumbnail = serializers.ImageField(required=False, allow_null=True)
     thumbnail_url = serializers.SerializerMethodField(read_only=True)
+    author_email = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Post
         fields = [
             "id",
+            "author",
+            "author_email",
             "title",
             "slug",
             "content",
@@ -56,7 +65,13 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "slug", "thumbnail_url", "published_at", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "author", "author_email", "slug", "thumbnail_url",
+            "published_at", "created_at", "updated_at",
+        ]
+
+    def get_author_email(self, obj):
+        return obj.author.email if obj.author else None
 
     def get_thumbnail_url(self, obj):
         if obj.thumbnail:

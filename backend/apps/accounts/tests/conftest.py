@@ -1,12 +1,17 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.accounts.tests.factories import UserFactory
+from .factories import UserFactory
 
 
 @pytest.fixture
 def api_client():
     return APIClient()
+
+
+@pytest.fixture
+def reader_user():
+    return UserFactory(role="reader")
 
 
 @pytest.fixture
@@ -32,4 +37,12 @@ def admin_client(admin_user):
     """APIClient authenticated as an admin."""
     client = APIClient()
     client.force_authenticate(user=admin_user)
+    return client
+
+
+@pytest.fixture
+def reader_client(reader_user):
+    """APIClient authenticated as a reader."""
+    client = APIClient()
+    client.force_authenticate(user=reader_user)
     return client

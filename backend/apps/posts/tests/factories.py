@@ -1,6 +1,7 @@
 import factory
 from django.utils import timezone
 
+from apps.accounts.tests.factories import UserFactory
 from apps.posts.models import Post
 
 
@@ -14,6 +15,7 @@ class PostFactory(factory.django.DjangoModelFactory):
     excerpt = factory.Faker("sentence")
     category = factory.Faker("word")
     status = Post.Status.DRAFT
+    author = factory.SubFactory(UserFactory, role="author")
 
     class Params:
         published = factory.Trait(

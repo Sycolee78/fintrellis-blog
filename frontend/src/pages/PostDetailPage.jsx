@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { usePost } from "../hooks/usePost";
 import { usePostMutation } from "../hooks/usePostMutation";
 import { useToast } from "../hooks/useToast";
+import { useAuth } from "../contexts/AuthContext";
 import PostStatusBadge from "../components/posts/PostStatusBadge";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import Alert from "../components/common/Alert";
@@ -14,9 +15,15 @@ export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const addToast = useToast();
+  const { user } = useAuth();
   const { post, loading, error } = usePost(id);
   const mutation = usePostMutation();
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const canEdit =
+    user &&
+    post &&
+    (user.role === "admin" || (user.role === "author" && post.author === user.id));
 
   const handleDelete = async () => {
     try {
@@ -59,24 +66,28 @@ export default function PostDetailPage() {
           <div style={styles.content}>{post.content}</div>
         </article>
 
-        <div style={styles.actions}>
-          <Button variant="secondary" onClick={() => navigate(`/posts/${id}/edit`)}>
-            Edit Post
-          </Button>
-          <Button variant="danger" onClick={() => setShowConfirm(true)}>
-            Delete
-          </Button>
-        </div>
+        {canEdit && (
+          <div style={styles.actions}>
+            <Button variant="secondary" onClick={() => navigate(`/posts/${id}/edit`)}>
+              Edit Post
+            </Button>
+            <Button variant="danger" onClick={() => setShowConfirm(true)}>
+              Delete
+            </Button>
+          </div>
+        )}
 
         {mutation.error && <Alert type="error" message={mutation.error} />}
 
-        <ConfirmDialog
-          isOpen={showConfirm}
-          title="Delete Post"
-          message={`Are you sure you want to delete "${post.title}"? This action cannot be undone.`}
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirm(false)}
-        />
+        {canEdit && (
+          <ConfirmDialog
+            isOpen={showConfirm}
+            title="Delete Post"
+            message={`Are you sure you want to delete "${post.title}"? This action cannot be undone.`}
+            onConfirm={handleDelete}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );
